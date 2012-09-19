@@ -9,6 +9,7 @@ var streams = require("stream-middleware")
     , partial = require("ap").partial
     , path = require("path")
     , through = require("through-stream")
+    , from = require("read-stream")
     , filed = require("filed")
     , request = require("request")
     , http = require("http")
@@ -22,7 +23,9 @@ var app = streams()
 
     .route("/hello.json"
         , partial(from, [{ msg: "hello" }])
-        , partial(through, JSON.stringify)
+        , partial(through, function (chunk, buffer) {
+            buffer.push(JSON.stringify(chunk))
+        })
         , header("content-type", "text/html"))
 
     .route("/plaintext"
@@ -34,10 +37,9 @@ var app = streams()
             , partial(request, "http://me.iriscouch.com/db", {
                 json: true
             })
-            , call(es.wait)
-            , partial(es.mapSync, function (chunk) {
-                return "<html><head>cool</head><body>" + chunk.index +
-                    "</body></html>"
+            , partial(through, function (chunk, buffer) {
+                buffer.push("<html><head>cool</head><body>" + chunk.index +
+                    "</body></html>")
             })
             , header("content-type", "text/html"))
     ;
