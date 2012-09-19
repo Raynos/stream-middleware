@@ -1,10 +1,3 @@
-# stream-middleware
-
-Streams as middleware
-
-## Example
-
-```
 var streams = require("stream-middleware")
     , partial = require("ap").partial
     , path = require("path")
@@ -57,14 +50,3 @@ function call(f) {
         f()
     }
 }
-```
-
-## Installation
-
-`npm install stream-middleware`
-
-## Contributors
-
- - Raynos
-
-## MIT Licenced
