@@ -1,15 +1,16 @@
 var slice = Array.prototype.slice
     , Router = require("routes").Router
 
-middleware.route = route
-middleware.pipe = pipe
+middleware.StreamRouter = StreamRouter
+middleware.Methods = Methods
+middleware.pipeline = pipeline
 
 module.exports = middleware
 
 function middleware(options) {
     options = options || {}
 
-    var routeHandler = route(options.matcher, options.notFound)
+    var routeHandler = StreamRouter(options.matcher, options.notFound)
 
     routeHandler.route = route
 
@@ -25,14 +26,14 @@ function middleware(options) {
             routeHandler.method = method
             routeHandler.addRoute(uri, methods)
         } else {
-            routeHandler.addRoute(uri, pipe.apply(null, streams))
+            routeHandler.addRoute(uri, pipeline(streams))
         }
 
         return routeHandler
 
         function method(methodName) {
             var streams = slice.call(arguments, 1)
-            hash[methodName] = pipe.apply(null, streams)
+            hash[methodName] = pipeline(streams)
         }
     }
 }
@@ -52,10 +53,14 @@ function defaultNoMethod(req, res) {
     res.end("Method not Allowed.")
 }
 
-function pipe() {
-    var streams = slice.call(arguments)
+function pipeline(streams) {
+    if (!Array.isArray(streams)) {
+        streams = slice.call(arguments)
+    }
 
-    return function (readable, writable) {
+    return handler
+
+    function handler(readable, writable) {
         var source, target, current
 
         if (readable.read) {
@@ -72,15 +77,22 @@ function pipe() {
             throw new Error("must pass in a writable stream")
         }
 
-        streams.map(function (Stream) {
+        streams
+            .map(createStream)
+            .reduce(pipeNext, source)
+            .pipe(target)
+
+        function createStream(Stream) {
             return Stream(source, target)
-        }).reduce(function (prev, current) {
-            return prev.pipe(current)
-        }, source).pipe(target)
+        }
     }
 }
 
-function route(matcher, NoStream) {
+function pipeNext(prev, current) {
+    return prev.pipe(current)
+}
+
+function StreamRouter(matcher, NoStream) {
     var router = new Router()
 
     matcher = matcher || defaultMatcher
